@@ -3,13 +3,13 @@ from discord.ext import commands, tasks
 from discord.ui import Button, View
 import socket
 from datetime import datetime
+import os
 from typing import List, Dict
 
 # ========== НАСТРОЙКИ ==========
-import os
-TOKEN = os.environ.get('TOKEN')  # Вставьте новый токен после сброса
+TOKEN = os.environ.get('TOKEN')
 
-# ПЕРВАЯ ГРУППА СЕРВЕРОВ (Канал #test)
+# ПЕРВАЯ ГРУППА СЕРВЕРОВ
 SERVERS_GROUP1 = [
     {"ip": "62.122.214.155", "port": 27014, "name": "🎯 **CS:S МИКС #1**", "type": "mix"},
     {"ip": "62.122.214.155", "port": 27015, "name": "⚡ **CS:S МИКС #2**", "type": "mix"},
@@ -22,7 +22,7 @@ SERVERS_GROUP1 = [
     {"ip": "45.95.31.134", "port": 27415, "name": "🎮 **CS:S МИКС #9**", "type": "mix"},
 ]
 
-# ВТОРАЯ ГРУППА СЕРВЕРОВ (ASTRUM & DIAMOND)
+# ВТОРАЯ ГРУППА СЕРВЕРОВ
 SERVERS_GROUP2 = [
     {"ip": "45.136.204.58", "port": 27015, "name": "🌟 **ASTRUM PROJECT**", "type": "mix"},
     {"ip": "37.230.162.178", "port": 27015, "name": "💫 **ASTRUM PROJECT 2**", "type": "mix"},
@@ -32,18 +32,17 @@ SERVERS_GROUP2 = [
     {"ip": "45.136.204.116", "port": 27020, "name": "⚔️ **DIAMOND 2x2 #2**", "type": "mix"},
 ]
 
-# ТРЕТЬЯ ГРУППА СЕРВЕРОВ (Тренировочные)
+# ТРЕТЬЯ ГРУППА СЕРВЕРОВ
 SERVERS_GROUP3 = [
     {"ip": "46.174.51.165", "port": 27015, "name": "🎯 **1x1 ARENA**", "type": "1x1", "full_threshold": 10},
     {"ip": "46.174.51.165", "port": 27017, "name": "💣 **GRENADE TRAINING**", "type": "training", "full_threshold": 5},
     {"ip": "46.174.51.165", "port": 27018, "name": "🎯 **AIM BOT TRAINING**", "type": "training", "full_threshold": 4},
 ]
 
-# ID каналов
-CHANNEL_ID_1 = 1476601497147150468  # Канал для первой группы (test)
-CHANNEL_ID_2 = 1476614532330946774  # ВСТАВЬТЕ ID ВТОРОГО КАНАЛА
-CHANNEL_ID_3 = 1476617744471425064  # ВСТАВЬТЕ ID ТРЕТЬЕГО КАНАЛА
-
+# ID каналов (ВСТАВЬТЕ СВОИ)
+CHANNEL_ID_1 = 1476601497147150468  # Основные сервера
+CHANNEL_ID_2 = 1476614532330946774  # Вставьте ID для ASTRUM & DIAMOND
+CHANNEL_ID_3 = 1476617744471425064  # Вставьте ID для тренировочных
 # ===============================
 
 intents = discord.Intents.default()
@@ -53,39 +52,7 @@ intents.guilds = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 message_ids = {CHANNEL_ID_1: None, CHANNEL_ID_2: None, CHANNEL_ID_3: None}
 
-def get_server_status(players: int, server_type: str, full_threshold: int = None):
-    """Определяет статус сервера в зависимости от его типа"""
-    
-    # Если для сервера задан свой порог полного
-    if full_threshold:
-        if players >= full_threshold:
-            return "🔥 ПОЛНЫЙ", "🔴"
-        elif players >= full_threshold - 2:
-            return "⚡ АКТИВНЫЙ", "🟠"
-        elif players >= full_threshold - 4:
-            return "📈 СРЕДНИЙ", "🟡"
-        elif players > 0:
-            return "📉 МАЛО", "🟢"
-        else:
-            return "💤 ПУСТО", "⚫"
-    
-    # Для обычных миксов (5x5)
-    if server_type == "mix":
-        if players >= 10:
-            return "🔥 ПОЛНЫЙ", "🔴"
-        elif players >= 7:
-            return "⚡ АКТИВНЫЙ", "🟠"
-        elif players >= 4:
-            return "📈 СРЕДНИЙ", "🟡"
-        elif players > 0:
-            return "📉 МАЛО", "🟢"
-        else:
-            return "💤 ПУСТО", "⚫"
-    
-    # По умолчанию
-    return "📊 НЕИЗВЕСТНО", "⚪"
-
-# Класс для кнопки обновления
+# ИСПРАВЛЕННАЯ КНОПКА
 class RefreshButton(Button):
     def __init__(self):
         super().__init__(
@@ -95,16 +62,16 @@ class RefreshButton(Button):
         )
     
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
         # Определяем какой это канал
         channel_id = interaction.channel.id
         if channel_id == CHANNEL_ID_1:
-            embed = await create_status_embed(SERVERS_GROUP1, "ОСНОВНЫЕ СЕРВЕРА", "mix")
+            embed = await create_status_embed(SERVERS_GROUP1, "ОСНОВНЫЕ СЕРВЕРА")
         elif channel_id == CHANNEL_ID_2:
-            embed = await create_status_embed(SERVERS_GROUP2, "ASTRUM & DIAMOND", "mix")
+            embed = await create_status_embed(SERVERS_GROUP2, "ASTRUM & DIAMOND")
         else:
-            embed = await create_status_embed(SERVERS_GROUP3, "ТРЕНИРОВОЧНЫЕ СЕРВЕРА", "special")
-        await interaction.message.edit(embed=embed, view=get_refresh_view())
+            embed = await create_status_embed(SERVERS_GROUP3, "ТРЕНИРОВОЧНЫЕ СЕРВЕРА")
+        
+        await interaction.response.edit_message(embed=embed, view=get_refresh_view())
         await interaction.followup.send("✅ Статус обновлен!", ephemeral=True)
 
 # Создание view с кнопкой
@@ -208,14 +175,41 @@ def get_servers_info(servers_list: List[Dict]) -> List[Dict]:
     
     return servers_info
 
-async def create_status_embed(servers_list: List[Dict], group_name: str, group_type: str):
-    """Создание embed с статусом серверов для конкретной группы"""
+def get_server_status(players: int, server_type: str, full_threshold: int = None):
+    """Определяет статус сервера"""
+    if full_threshold:
+        if players >= full_threshold:
+            return "🔥 ПОЛНЫЙ", "🔴"
+        elif players >= full_threshold - 2:
+            return "⚡ АКТИВНЫЙ", "🟠"
+        elif players >= full_threshold - 4:
+            return "📈 СРЕДНИЙ", "🟡"
+        elif players > 0:
+            return "📉 МАЛО", "🟢"
+        else:
+            return "💤 ПУСТО", "⚫"
+    
+    if server_type == "mix":
+        if players >= 10:
+            return "🔥 ПОЛНЫЙ", "🔴"
+        elif players >= 7:
+            return "⚡ АКТИВНЫЙ", "🟠"
+        elif players >= 4:
+            return "📈 СРЕДНИЙ", "🟡"
+        elif players > 0:
+            return "📉 МАЛО", "🟢"
+        else:
+            return "💤 ПУСТО", "⚫"
+    
+    return "📊 НЕИЗВЕСТНО", "⚪"
+
+async def create_status_embed(servers_list: List[Dict], group_name: str):
+    """Создание embed с статусом серверов"""
     servers_info = get_servers_info(servers_list)
     
     total_players = sum(s['players'] for s in servers_info if s.get('online', False))
     online_servers = sum(1 for s in servers_info if s.get('online', False))
     
-    # Создаем embed сообщение
     embed = discord.Embed(
         title=f"🎮 **CS:S - {group_name}**",
         description=(
@@ -228,26 +222,19 @@ async def create_status_embed(servers_list: List[Dict], group_name: str, group_t
         timestamp=datetime.now()
     )
     
-    # Добавляем информацию по каждому серверу в красивых рамках
     for i, server in enumerate(servers_info, 1):
         if server['online']:
-            # Получаем статус для этого типа сервера
             status_emoji, border_color = get_server_status(
                 server['players'], 
                 server.get('server_type', 'mix'),
                 server.get('full_threshold')
             )
             
-            # Прогресс-бар
             progress = int((server['players'] / server['max_players']) * 10)
             progress_bar = "█" * progress + "░" * (10 - progress)
             
-            # Добавляем информацию о пороге полного для специальных серверов
-            threshold_info = ""
-            if server.get('full_threshold'):
-                threshold_info = f" [полный при {server['full_threshold']}+]"
+            threshold_info = f" [полный при {server['full_threshold']}+]" if server.get('full_threshold') else ""
             
-            # Создаем красивую рамку для каждого сервера
             server_box = (
                 f"┌────────────────────────────────┐\n"
                 f"│ {border_color} {server['display_name']}{threshold_info}\n"
@@ -265,7 +252,6 @@ async def create_status_embed(servers_list: List[Dict], group_name: str, group_t
                 inline=False
             )
         else:
-            # Рамка для оффлайн сервера
             offline_box = (
                 f"┌────────────────────────────────┐\n"
                 f"│ ❌ {server['display_name']}\n"
@@ -281,43 +267,33 @@ async def create_status_embed(servers_list: List[Dict], group_name: str, group_t
                 inline=False
             )
     
-    embed.set_footer(
-        text=f"🔄 Автообновление каждые 20 сек • Нажмите кнопку для обновления",
-        icon_url="https://cdn.discordapp.com/emojis/123.png"
-    )
-    
+    embed.set_footer(text="🔄 Автообновление каждые 20 сек • Нажмите кнопку для обновления")
     return embed
 
 @bot.event
 async def on_ready():
     print(f'✅ Бот {bot.user} подключен!')
-    print(f'ID бота: {bot.user.id}')
     print(f'Находится на серверах: {[guild.name for guild in bot.guilds]}')
-    
-    # Запускаем обновление для всех каналов
     update_channels.start()
 
 @tasks.loop(seconds=20)
 async def update_channels():
-    """Автоматическое обновление сообщений во всех каналах"""
+    """Автоматическое обновление сообщений"""
     global message_ids
     
-    # Обновляем первый канал
     channel1 = bot.get_channel(CHANNEL_ID_1)
     if channel1:
-        embed1 = await create_status_embed(SERVERS_GROUP1, "ОСНОВНЫЕ СЕРВЕРА", "mix")
+        embed1 = await create_status_embed(SERVERS_GROUP1, "ОСНОВНЫЕ СЕРВЕРА")
         await update_channel_message(channel1, embed1, CHANNEL_ID_1)
     
-    # Обновляем второй канал
     channel2 = bot.get_channel(CHANNEL_ID_2)
-    if channel2:
-        embed2 = await create_status_embed(SERVERS_GROUP2, "ASTRUM & DIAMOND", "mix")
+    if channel2 and CHANNEL_ID_2 != 0:
+        embed2 = await create_status_embed(SERVERS_GROUP2, "ASTRUM & DIAMOND")
         await update_channel_message(channel2, embed2, CHANNEL_ID_2)
     
-    # Обновляем третий канал
     channel3 = bot.get_channel(CHANNEL_ID_3)
-    if channel3:
-        embed3 = await create_status_embed(SERVERS_GROUP3, "ТРЕНИРОВОЧНЫЕ СЕРВЕРА", "special")
+    if channel3 and CHANNEL_ID_3 != 0:
+        embed3 = await create_status_embed(SERVERS_GROUP3, "ТРЕНИРОВОЧНЫЕ СЕРВЕРА")
         await update_channel_message(channel3, embed3, CHANNEL_ID_3)
 
 async def update_channel_message(channel, embed, channel_id):
@@ -329,52 +305,50 @@ async def update_channel_message(channel, embed, channel_id):
             try:
                 message = await channel.fetch_message(message_ids[channel_id])
                 await message.edit(embed=embed, view=get_refresh_view())
-                print(f"✅ Канал {channel_id} обновлен в {datetime.now().strftime('%H:%M:%S')}")
+                print(f"✅ Канал {channel_id} обновлен")
             except discord.NotFound:
                 message = await channel.send(embed=embed, view=get_refresh_view())
                 message_ids[channel_id] = message.id
-                print(f"📝 Создано новое сообщение в канале {channel_id}")
         else:
-            # Удаляем старые сообщения бота
+            # Удаляем старые сообщения
             async for msg in channel.history(limit=20):
                 if msg.author == bot.user:
                     await msg.delete()
             
             message = await channel.send(embed=embed, view=get_refresh_view())
             message_ids[channel_id] = message.id
-            print(f"✨ Создано первое сообщение в канале {channel_id}")
+            print(f"✨ Создано сообщение в канале {channel_id}")
     except Exception as e:
         print(f"❌ Ошибка в канале {channel_id}: {e}")
 
-# Команда для проверки конкретного сервера
+# Команды
+@bot.command(name='обнови')
+async def force_update(ctx):
+    await update_channels()
+    await ctx.send("✅ Статус обновлен!", delete_after=3)
+
 @bot.command(name='сервер')
 async def check_server(ctx, group: str = None, number: int = None):
-    """Проверить сервер: !сервер [основной/новый/тренир] [номер]"""
     groups = {
         'основной': (SERVERS_GROUP1, "основных"),
         'новый': (SERVERS_GROUP2, "новых"),
-        'тренир': (SERVERS_GROUP3, "тренировочных"),
-        'тренировочный': (SERVERS_GROUP3, "тренировочных")
+        'тренир': (SERVERS_GROUP3, "тренировочных")
     }
     
-    if group is None or number is None:
-        await ctx.send("❌ Использование: `!сервер [основной/новый/тренир] [номер]`\nПример: `!сервер тренир 1`")
+    if not group or not number:
+        await ctx.send("❌ Использование: `!сервер [основной/новый/тренир] [номер]`")
         return
     
     group_lower = group.lower()
-    if group_lower not in groups and group_lower not in ['1', '2', '3']:
-        await ctx.send("❌ Неправильная группа. Используйте `основной`, `новый` или `тренир`")
-        return
-    
-    # Определяем группу по номеру или названию
-    if group_lower == '1' or group_lower == 'основной':
+    if group_lower == 'основной':
         servers, group_name = SERVERS_GROUP1, "основных"
-    elif group_lower == '2' or group_lower == 'новый':
+    elif group_lower == 'новый':
         servers, group_name = SERVERS_GROUP2, "новых"
-    elif group_lower == '3' or group_lower == 'тренир' or group_lower == 'тренировочный':
+    elif group_lower == 'тренир':
         servers, group_name = SERVERS_GROUP3, "тренировочных"
     else:
-        servers, group_name = groups[group_lower]
+        await ctx.send("❌ Неправильная группа. Используйте `основной`, `новый` или `тренир`")
+        return
     
     if number < 1 or number > len(servers):
         await ctx.send(f"❌ В группе {group_name} только {len(servers)} серверов")
@@ -384,7 +358,6 @@ async def check_server(ctx, group: str = None, number: int = None):
     info = query_server(server['ip'], server['port'])
     
     if info:
-        threshold_info = f"\n⚡ Полный при: {server.get('full_threshold', 10)}+" if server.get('full_threshold') else ""
         embed = discord.Embed(
             title=f"🎮 **{server['name']}**",
             color=discord.Color.green(),
@@ -393,27 +366,16 @@ async def check_server(ctx, group: str = None, number: int = None):
         embed.add_field(name="📍 **Карта**", value=f"`{info['map']}`", inline=True)
         embed.add_field(name="👥 **Игроки**", value=f"`{info['players']}/{info['max_players']}`", inline=True)
         embed.add_field(name="🔌 **IP:Порт**", value=f"`{server['ip']}:{server['port']}`", inline=True)
-        if threshold_info:
-            embed.add_field(name="📊 **Инфо**", value=threshold_info, inline=False)
         await ctx.send(embed=embed)
     else:
         await ctx.send(f"❌ Сервер {server['name']} оффлайн")
 
-# Команда для принудительного обновления
-@bot.command(name='обнови')
-async def force_update(ctx):
-    """Принудительно обновить статус"""
-    await update_channels()
-    await ctx.send("✅ Статус обновлен!", delete_after=3)
-
-# Команда для смены канала
 @bot.command(name='канал')
 @commands.has_permissions(administrator=True)
 async def set_channel(ctx, channel: discord.TextChannel, group: str = None):
-    """Установить канал для группы: !канал #канал основной/новый/тренир"""
     global CHANNEL_ID_1, CHANNEL_ID_2, CHANNEL_ID_3, message_ids
     
-    if group is None:
+    if not group:
         await ctx.send("❌ Укажите группу: `основной`, `новый` или `тренир`")
         return
     
@@ -425,7 +387,7 @@ async def set_channel(ctx, channel: discord.TextChannel, group: str = None):
         CHANNEL_ID_2 = channel.id
         message_ids[CHANNEL_ID_2] = None
         await ctx.send(f"✅ Канал для **НОВЫХ** серверов изменен на {channel.mention}")
-    elif group.lower() in ['тренир', '3', 'тре', 'тренировочный']:
+    elif group.lower() in ['тренир', '3', 'тре']:
         CHANNEL_ID_3 = channel.id
         message_ids[CHANNEL_ID_3] = None
         await ctx.send(f"✅ Канал для **ТРЕНИРОВОЧНЫХ** серверов изменен на {channel.mention}")
@@ -435,6 +397,10 @@ async def set_channel(ctx, channel: discord.TextChannel, group: str = None):
     
     await update_channels()
 
-# Запуск бота
+# Запуск
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    if not TOKEN:
+        print("❌ ТОКЕН НЕ НАЙДЕН! Добавьте переменную TOKEN в Railway Variables")
+    else:
+        print(f"✅ Токен загружен, запускаю бота...")
+        bot.run(TOKEN)
