@@ -53,56 +53,72 @@ message_ids = {CHANNEL_ID_1: None, CHANNEL_ID_2: None, CHANNEL_ID_3: None}
 
 def query_server(ip: str, port: int) -> Dict:
     """Запрос информации об одном сервере"""
+    sock = None
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(2)
+        sock.settimeout(3)
         
+        # A2S_INFO запрос
         request = b'\xFF\xFF\xFF\xFFTSource Engine Query\x00'
         sock.sendto(request, (ip, port))
         
+        # Получаем ответ
         response, addr = sock.recvfrom(4096)
+        sock.close()
         
         if response[:4] != b'\xFF\xFF\xFF\xFF':
-            sock.close()
             return None
         
         data = response[4:]
+        
+        # Проверяем тип ответа (первые 4 байта уже убрали)
+        if len(data) < 1:
+            return None
+            
+        # Тип ответа (байт) - пропускаем
         data = data[1:]
         
+        # Название сервера
         name_end = data.find(b'\x00')
         if name_end == -1:
-            sock.close()
             return None
-        server_name = data[:name_end].decode('utf-8', errors='ignore')
+        server_name = data[:name_end].decode('utf-8', errors='ignore').strip()
         data = data[name_end+1:]
         
+        # Карта
         map_end = data.find(b'\x00')
         if map_end == -1:
-            sock.close()
             return None
-        current_map = data[:map_end].decode('utf-8', errors='ignore')
+        current_map = data[:map_end].decode('utf-8', errors='ignore').strip()
         data = data[map_end+1:]
         
+        # Папка игры
         folder_end = data.find(b'\x00')
         if folder_end == -1:
-            sock.close()
             return None
         data = data[folder_end+1:]
         
+        # Название игры
         game_end = data.find(b'\x00')
         if game_end == -1:
-            sock.close()
             return None
         data = data[game_end+1:]
         
+        # ID игры (2 байта)
+        if len(data) < 2:
+            return None
         data = data[2:]
         
+        # Количество игроков
+        if len(data) < 1:
+            return None
         players = data[0]
         data = data[1:]
         
+        # Максимальное количество игроков
+        if len(data) < 1:
+            return None
         max_players = data[0]
-        
-        sock.close()
         
         return {
             'name': server_name,
@@ -112,9 +128,18 @@ def query_server(ip: str, port: int) -> Dict:
             'online': True
         }
         
-    except Exception as e:
+    except socket.timeout:
+        if sock:
+            sock.close()
         return None
-
+    except ConnectionRefusedError:
+        if sock:
+            sock.close()
+        return None
+    except Exception as e:
+        if sock:
+            sock.close()
+        return None
 def get_servers_info(servers_list: List[Dict]) -> List[Dict]:
     """Получение информации о группе серверов"""
     servers_info = []
