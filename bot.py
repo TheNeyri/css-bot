@@ -4,9 +4,10 @@ from discord.ui import Button, View
 import socket
 from datetime import datetime
 from typing import List, Dict
+import os
 
 # ========== НАСТРОЙКИ ==========
-TOKEN = 'MTQ3NjYwMDUyMjc4OTIyODY3NQ.GfdJBl.W-ebyZge3an5dnr-zC1eT800_G5PSVzOUO8FvU'  # Вставьте новый токен после сброса
+TOKEN = os.environ.get('TOKEN')  # Вставьте новый токен после сброса
 
 # ПЕРВАЯ ГРУППА СЕРВЕРОВ (Канал #test)
 SERVERS_GROUP1 = [
