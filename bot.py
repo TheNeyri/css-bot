@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import List, Dict
 
 # ========== НАСТРОЙКИ ==========
-TOKEN = 'MTQ3NjYwMDUyMjc4OTIyODY3NQ.GfdJBl.W-ebyZge3an5dnr-zC1eT800_G5PSVzOUO8FvU'  # Вставьте новый токен после сброса
+import os
+TOKEN = os.environ.get('TOKEN')  # Вставьте новый токен после сброса
 
 # ПЕРВАЯ ГРУППА СЕРВЕРОВ (Канал #test)
 SERVERS_GROUP1 = [
