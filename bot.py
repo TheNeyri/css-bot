@@ -40,8 +40,8 @@ SERVERS_GROUP3 = [
 
 # ID каналов (ВСТАВЬТЕ СВОИ)
 CHANNEL_ID_1 = 1476601497147150468  # Основные сервера
-CHANNEL_ID_2 = 0  # Вставьте ID для ASTRUM & DIAMOND
-CHANNEL_ID_3 = 0  # Вставьте ID для тренировочных
+CHANNEL_ID_2 = 1476614532330946774  # Вставьте ID для ASTRUM & DIAMOND
+CHANNEL_ID_3 = 1476617744471425064  # Вставьте ID для тренировочных
 # ===============================
 
 intents = discord.Intents.default()
