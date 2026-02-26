@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-from discord.ui import Button, View
 import socket
 from datetime import datetime
 import os
@@ -41,8 +40,8 @@ SERVERS_GROUP3 = [
 
 # ID каналов (ВСТАВЬТЕ СВОИ)
 CHANNEL_ID_1 = 1476601497147150468  # Основные сервера
-CHANNEL_ID_2 = 1476614532330946774  # Вставьте ID для ASTRUM & DIAMOND
-CHANNEL_ID_3 = 1476617744471425064  # Вставьте ID для тренировочных
+CHANNEL_ID_2 = 0  # Вставьте ID для ASTRUM & DIAMOND
+CHANNEL_ID_3 = 0  # Вставьте ID для тренировочных
 # ===============================
 
 intents = discord.Intents.default()
@@ -51,34 +50,6 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 message_ids = {CHANNEL_ID_1: None, CHANNEL_ID_2: None, CHANNEL_ID_3: None}
-
-# ИСПРАВЛЕННАЯ КНОПКА
-class RefreshButton(Button):
-    def __init__(self):
-        super().__init__(
-            label="🔄 Обновить сейчас", 
-            style=discord.ButtonStyle.green,
-            emoji="⚡"
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
-        # Определяем какой это канал
-        channel_id = interaction.channel.id
-        if channel_id == CHANNEL_ID_1:
-            embed = await create_status_embed(SERVERS_GROUP1, "ОСНОВНЫЕ СЕРВЕРА")
-        elif channel_id == CHANNEL_ID_2:
-            embed = await create_status_embed(SERVERS_GROUP2, "ASTRUM & DIAMOND")
-        else:
-            embed = await create_status_embed(SERVERS_GROUP3, "ТРЕНИРОВОЧНЫЕ СЕРВЕРА")
-        
-        await interaction.response.edit_message(embed=embed, view=get_refresh_view())
-        await interaction.followup.send("✅ Статус обновлен!", ephemeral=True)
-
-# Создание view с кнопкой
-def get_refresh_view():
-    view = View(timeout=None)
-    view.add_item(RefreshButton())
-    return view
 
 def query_server(ip: str, port: int) -> Dict:
     """Запрос информации об одном сервере"""
@@ -176,28 +147,28 @@ def get_servers_info(servers_list: List[Dict]) -> List[Dict]:
     return servers_info
 
 def get_server_status(players: int, server_type: str, full_threshold: int = None):
-    """Определяет статус сервера"""
+    """Определяет статус сервера (цвета: красный с зеленым поменяны, оранжевый с желтым поменяны)"""
     if full_threshold:
         if players >= full_threshold:
-            return "🔥 ПОЛНЫЙ", "🔴"
+            return "🔥 ПОЛНЫЙ", "🔴"  # БЫЛО: 🟢 СТАЛО: 🔴
         elif players >= full_threshold - 2:
-            return "⚡ АКТИВНЫЙ", "🟠"
+            return "⚡ АКТИВНЫЙ", "🟠"  # БЫЛО: 🟡 СТАЛО: 🟠
         elif players >= full_threshold - 4:
-            return "📈 СРЕДНИЙ", "🟡"
+            return "📈 СРЕДНИЙ", "🟡"  # БЫЛО: 🟠 СТАЛО: 🟡
         elif players > 0:
-            return "📉 МАЛО", "🟢"
+            return "📉 МАЛО", "🟢"  # БЫЛО: 🔴 СТАЛО: 🟢
         else:
             return "💤 ПУСТО", "⚫"
     
     if server_type == "mix":
         if players >= 10:
-            return "🔥 ПОЛНЫЙ", "🔴"
+            return "🔥 ПОЛНЫЙ", "🔴"  # БЫЛО: 🟢 СТАЛО: 🔴
         elif players >= 7:
-            return "⚡ АКТИВНЫЙ", "🟠"
+            return "⚡ АКТИВНЫЙ", "🟠"  # БЫЛО: 🟡 СТАЛО: 🟠
         elif players >= 4:
-            return "📈 СРЕДНИЙ", "🟡"
+            return "📈 СРЕДНИЙ", "🟡"  # БЫЛО: 🟠 СТАЛО: 🟡
         elif players > 0:
-            return "📉 МАЛО", "🟢"
+            return "📉 МАЛО", "🟢"  # БЫЛО: 🔴 СТАЛО: 🟢
         else:
             return "💤 ПУСТО", "⚫"
     
@@ -267,7 +238,7 @@ async def create_status_embed(servers_list: List[Dict], group_name: str):
                 inline=False
             )
     
-    embed.set_footer(text="🔄 Автообновление каждые 20 сек • Нажмите кнопку для обновления")
+    embed.set_footer(text="🔄 Автообновление каждые 20 секунд")
     return embed
 
 @bot.event
@@ -304,10 +275,10 @@ async def update_channel_message(channel, embed, channel_id):
         if message_ids[channel_id]:
             try:
                 message = await channel.fetch_message(message_ids[channel_id])
-                await message.edit(embed=embed, view=get_refresh_view())
+                await message.edit(embed=embed)
                 print(f"✅ Канал {channel_id} обновлен")
             except discord.NotFound:
-                message = await channel.send(embed=embed, view=get_refresh_view())
+                message = await channel.send(embed=embed)
                 message_ids[channel_id] = message.id
         else:
             # Удаляем старые сообщения
@@ -315,7 +286,7 @@ async def update_channel_message(channel, embed, channel_id):
                 if msg.author == bot.user:
                     await msg.delete()
             
-            message = await channel.send(embed=embed, view=get_refresh_view())
+            message = await channel.send(embed=embed)
             message_ids[channel_id] = message.id
             print(f"✨ Создано сообщение в канале {channel_id}")
     except Exception as e:
