@@ -16,9 +16,9 @@ SERVERS_GROUP1 = [
     {"ip": "62.122.214.155", "port": 27017, "name": "💫 **CS:S МИКС #4**", "type": "mix"},
     {"ip": "45.95.31.153", "port": 27015, "name": "🎪 **CS:S МИКС #5**", "type": "mix"},
     {"ip": "45.95.31.153", "port": 27115, "name": "🏆 **CS:S МИКС #6**", "type": "mix"},
-    {"ip": "92.255.63.83", "port": 27215, "name": "⭐ **CS:S МИКС #7**", "type": "mix"},
-    {"ip": "92.255.63.86", "port": 27115, "name": "✨ **CS:S МИКС #8**", "type": "mix"},
-    {"ip": "45.95.31.134", "port": 27415, "name": "🎮 **CS:S МИКС #9**", "type": "mix"},
+    {"ip": "92.255.63.83", "port": 27215, "name": "⭐ **CS:S МИКС SIBERIA #1**", "type": "mix"},
+    {"ip": "92.255.63.86", "port": 27115, "name": "✨ **CS:S МИКС SIBERIA #2**", "type": "mix"},
+    {"ip": "45.95.31.134", "port": 27415, "name": "🎮 **CS:S МИКС TOXIC**", "type": "mix"},
 ]
 
 # ВТОРАЯ ГРУППА СЕРВЕРОВ
@@ -147,28 +147,28 @@ def get_servers_info(servers_list: List[Dict]) -> List[Dict]:
     return servers_info
 
 def get_server_status(players: int, server_type: str, full_threshold: int = None):
-    """Определяет статус сервера (цвета: красный с зеленым поменяны, оранжевый с желтым поменяны)"""
+    """Определяет статус сервера"""
     if full_threshold:
         if players >= full_threshold:
-            return "🔥 ПОЛНЫЙ", "🔴"  # БЫЛО: 🟢 СТАЛО: 🔴
+            return "🔥 ПОЛНЫЙ", "🔴"
         elif players >= full_threshold - 2:
-            return "⚡ АКТИВНЫЙ", "🟠"  # БЫЛО: 🟡 СТАЛО: 🟠
+            return "⚡ АКТИВНЫЙ", "🟠"
         elif players >= full_threshold - 4:
-            return "📈 СРЕДНИЙ", "🟡"  # БЫЛО: 🟠 СТАЛО: 🟡
+            return "📈 СРЕДНИЙ", "🟡"
         elif players > 0:
-            return "📉 МАЛО", "🟢"  # БЫЛО: 🔴 СТАЛО: 🟢
+            return "📉 МАЛО", "🟢"
         else:
             return "💤 ПУСТО", "⚫"
     
     if server_type == "mix":
         if players >= 10:
-            return "🔥 ПОЛНЫЙ", "🔴"  # БЫЛО: 🟢 СТАЛО: 🔴
+            return "🔥 ПОЛНЫЙ", "🔴"
         elif players >= 7:
-            return "⚡ АКТИВНЫЙ", "🟠"  # БЫЛО: 🟡 СТАЛО: 🟠
+            return "⚡ АКТИВНЫЙ", "🟠"
         elif players >= 4:
-            return "📈 СРЕДНИЙ", "🟡"  # БЫЛО: 🟠 СТАЛО: 🟡
+            return "📈 СРЕДНИЙ", "🟡"
         elif players > 0:
-            return "📉 МАЛО", "🟢"  # БЫЛО: 🔴 СТАЛО: 🟢
+            return "📉 МАЛО", "🟢"
         else:
             return "💤 ПУСТО", "⚫"
     
@@ -193,7 +193,7 @@ async def create_status_embed(servers_list: List[Dict], group_name: str):
         timestamp=datetime.now()
     )
     
-    for i, server in enumerate(servers_info, 1):
+    for server in servers_info:
         if server['online']:
             status_emoji, border_color = get_server_status(
                 server['players'], 
@@ -292,31 +292,29 @@ async def update_channel_message(channel, embed, channel_id):
     except Exception as e:
         print(f"❌ Ошибка в канале {channel_id}: {e}")
 
-# Команды
+# Команда для принудительного обновления
 @bot.command(name='обнови')
 async def force_update(ctx):
     await update_channels()
     await ctx.send("✅ Статус обновлен!", delete_after=3)
 
+# Команда для проверки конкретного сервера
 @bot.command(name='сервер')
 async def check_server(ctx, group: str = None, number: int = None):
-    groups = {
-        'основной': (SERVERS_GROUP1, "основных"),
-        'новый': (SERVERS_GROUP2, "новых"),
-        'тренир': (SERVERS_GROUP3, "тренировочных")
-    }
-    
     if not group or not number:
         await ctx.send("❌ Использование: `!сервер [основной/новый/тренир] [номер]`")
         return
     
     group_lower = group.lower()
     if group_lower == 'основной':
-        servers, group_name = SERVERS_GROUP1, "основных"
+        servers = SERVERS_GROUP1
+        group_name = "основных"
     elif group_lower == 'новый':
-        servers, group_name = SERVERS_GROUP2, "новых"
+        servers = SERVERS_GROUP2
+        group_name = "новых"
     elif group_lower == 'тренир':
-        servers, group_name = SERVERS_GROUP3, "тренировочных"
+        servers = SERVERS_GROUP3
+        group_name = "тренировочных"
     else:
         await ctx.send("❌ Неправильная группа. Используйте `основной`, `новый` или `тренир`")
         return
@@ -341,6 +339,7 @@ async def check_server(ctx, group: str = None, number: int = None):
     else:
         await ctx.send(f"❌ Сервер {server['name']} оффлайн")
 
+# Команда для смены канала
 @bot.command(name='канал')
 @commands.has_permissions(administrator=True)
 async def set_channel(ctx, channel: discord.TextChannel, group: str = None):
